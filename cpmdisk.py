@@ -14,6 +14,9 @@
 #   You should have received a copy of the GNU General Public License
 #   along with PythonCPM.  If not, see <https://www.gnu.org/licenses/>.
 
+import struct
+from collections import namedtuple
+
 class CpmDisk:
     #block size
     #first data track
@@ -33,6 +36,7 @@ class CpmDisk:
 
     def process_directory(self):
         directory_data=bytearray()
+        directory_entries=[]
         skewed_sector = 0
         for i in range (self.directory_blocks):
             directory_data.extend(self.sides[0].tracks[self.first_data_track].sectors[skewed_sector].data)
@@ -40,6 +44,11 @@ class CpmDisk:
             if skewed_sector > 8:
                 skewed_sector = skewed_sector - 9
         
+        for i in range (0,len(directory_data),32):
+            directory_entry = namedtuple('directory_entry','user file type extent allocation')
+            directory_entries.append(directory_entry._make(struct.unpack('<B8s3s4s16s',directory_data[i:i+32])))
+
+        #All the text is in "directory Data"
         print(directory_data)
 
 
