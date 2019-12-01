@@ -16,7 +16,7 @@
 
 import argparse
 import struct
-from cpmdisk import CpmDisk, CpmDiskSide, CpmTrack, CpmDirectory
+from cpmdisk import CpmDisk, CpmDiskSide, CpmTrack, CpmDirectory, CpmSector
 
 sector_sizes = dict([ (0,128), (1,256), (2,512), (3,1024), (4,2048), \
     (5,4096), (6,8192) ])
@@ -59,7 +59,12 @@ print(header)
 # We assume that the file is the correct structure and we're
 # parsing everything that could possibly be in there...
 
+#block size for now... - RM480Z CP/M2.2
 disk = CpmDisk(1024)
+#directory size
+disk.directory_blocks=4
+#first data track
+disk.first_data_track=3
 
 while True:
     track_header = file.read(5)
@@ -91,29 +96,55 @@ while True:
     print("SectorSize: ",sector_sizes[track_sector_size])
     print("SectorMap: ",track_sector_map)
 
+    max_sector_value = max(track_sector_map)
+    start_sector = max_sector_value - (track_sectors-1)
     current_track = CpmTrack(track_mode,track_sectors,0,sector_sizes[track_sector_size])
+    current_side = disk.sides[(track_head & 1)]
+
+    #fudge for RM images for the time being
+    if track_cylinder == 0:
+        current_track.skew=3
+    else:
+        current_track.skew=5
 
     if track_cyl_map :
         print ("Cylinder Map: ",track_cyl_map)
     
     if track_head_map :
         print ("Head Map: ",track_head_map)
+        disk.independent_sides = True
+        
 
     # for each sector
     for i in range(0,track_sectors):
         sector_status_byte = file.read(1)[0]
+        sector_index_number = track_sector_map[i]-start_sector
+        print("Sector index:",sector_index_number)
         if (sector_status_byte ==  1) or  (sector_status_byte ==  3) or (sector_status_byte ==  5) or \
             (sector_status_byte ==  7):
             #copy directly
             sector_data = file.read(sector_sizes[track_sector_size])
+            current_sector = CpmSector(track_sector_map[i], sector_data)
+            current_track.sectors[sector_index_number] = current_sector
         elif (sector_status_byte ==  2) or  (sector_status_byte ==  4) or (sector_status_byte ==  6) or \
             (sector_status_byte ==  8):
             sector_data = file.read(1)
-            #pad out
+            padded_data = bytearray()
+            for x in range (0,sector_sizes[track_sector_size]):
+                padded_data.append(sector_data[0])
+            current_sector = CpmSector(track_sector_map[i], padded_data)
+            current_track.sectors[sector_index_number] = current_sector
+
         else:
             sector_data = None
-        print("Sector ",i," Status: ",sector_status_byte)
+        print("Sector ",track_sector_map[i]," Status: ",sector_status_byte)
         print("Data:", sector_data)
+    current_side.tracks.append(current_track)
+
+print("Disk read into CpmDisk object.")
+print("Tracks: ",len(disk.sides[0].tracks))
+
+disk.process_directory()
 
 
 

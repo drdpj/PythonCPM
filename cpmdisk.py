@@ -18,6 +18,7 @@ class CpmDisk:
     #block size
     #first data track
     #directory blocks
+    #independent sides
 
     def __init__(self, block_size):
         super().__init__()
@@ -27,6 +28,19 @@ class CpmDisk:
         self.sides = []
         self.sides.append(CpmDiskSide(0))
         self.sides.append(CpmDiskSide(1))
+        self.independent_sides = False
+        self.directory = CpmDirectory()
+
+    def process_directory(self):
+        directory_data=bytearray()
+        skewed_sector = 0
+        for i in range (self.directory_blocks):
+            directory_data.extend(self.sides[0].tracks[self.first_data_track].sectors[skewed_sector].data)
+            skewed_sector = skewed_sector + 5
+            if skewed_sector > 8:
+                skewed_sector = skewed_sector - 9
+        
+        print(directory_data)
 
 
 
@@ -51,7 +65,7 @@ class CpmTrack:
         self.sectors = []
         
         #sparse assignment of sectors...
-        for x in range(self.number_of_sectors):
+        for x in range(0,self.number_of_sectors):
             self.sectors.append(None)
 
 
@@ -64,4 +78,7 @@ class CpmSector:
         self.data = data
 
 class CpmDirectory:
+    pass
+
+class CpmDirectoryEntry:
     pass
