@@ -33,10 +33,10 @@ class CpmDisk:
         self.sides.append(CpmDiskSide(1))
         self.independent_sides = False
         self.directory = CpmDirectory()
+        self.directory_entries=[]
 
     def process_directory(self):
         directory_data=bytearray()
-        directory_entries=[]
         skewed_sector = 0
         for i in range (self.directory_blocks):
             directory_data.extend(self.sides[0].tracks[self.first_data_track].sectors[skewed_sector].data)
@@ -46,7 +46,7 @@ class CpmDisk:
         
         for i in range (0,len(directory_data),32):
             directory_entry = namedtuple('directory_entry','user file type extent allocation')
-            directory_entries.append(directory_entry._make(struct.unpack('<B8s3s4s16s',directory_data[i:i+32])))
+            self.directory_entries.append(directory_entry._make(struct.unpack('<B8s3s4s16s',directory_data[i:i+32])))
 
         #All the text is in "directory Data"
         print(directory_data)
