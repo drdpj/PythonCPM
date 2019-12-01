@@ -16,6 +16,7 @@
 
 import argparse
 import struct
+from cpmdisk import CpmDisk, CpmDiskSide, CpmTrack, CpmDirectory
 
 sector_sizes = dict([ (0,128), (1,256), (2,512), (3,1024), (4,2048), \
     (5,4096), (6,8192) ])
@@ -58,6 +59,8 @@ print(header)
 # We assume that the file is the correct structure and we're
 # parsing everything that could possibly be in there...
 
+disk = CpmDisk(1024)
+
 while True:
     track_header = file.read(5)
     if not track_header:
@@ -87,6 +90,9 @@ while True:
     print("Sectors: ",track_sectors)
     print("SectorSize: ",sector_sizes[track_sector_size])
     print("SectorMap: ",track_sector_map)
+
+    current_track = CpmTrack(track_mode,track_sectors,0,sector_sizes[track_sector_size])
+
     if track_cyl_map :
         print ("Cylinder Map: ",track_cyl_map)
     
@@ -98,10 +104,12 @@ while True:
         sector_status_byte = file.read(1)[0]
         if (sector_status_byte ==  1) or  (sector_status_byte ==  3) or (sector_status_byte ==  5) or \
             (sector_status_byte ==  7):
+            #copy directly
             sector_data = file.read(sector_sizes[track_sector_size])
         elif (sector_status_byte ==  2) or  (sector_status_byte ==  4) or (sector_status_byte ==  6) or \
             (sector_status_byte ==  8):
             sector_data = file.read(1)
+            #pad out
         else:
             sector_data = None
         print("Sector ",i," Status: ",sector_status_byte)
