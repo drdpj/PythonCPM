@@ -35,6 +35,7 @@ class CpmDisk:
         self.directory = CpmDirectory()
         self.directory_entries=[]
 
+
     def process_directory(self):
         directory_data=bytearray()
         skewed_sector = 0
@@ -49,7 +50,7 @@ class CpmDisk:
             self.directory_entries.append(directory_entry._make(struct.unpack('<B8s3s4s16s',directory_data[i:i+32])))
 
         #All the text is in "directory Data"
-        print(directory_data)
+        
 
 
 

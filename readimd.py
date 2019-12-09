@@ -29,11 +29,33 @@ def file_check(fn):
         print("\nNo such file.\n")
         return 0
 
+def display_directory(d):
+    disk = d
+    disk.process_directory()
+
+    for file_entry in disk.directory_entries:
+        file_type = bytearray()
+        rw = False
+        sys = False
+        for current_byte in file_entry.type:
+            file_type.append(current_byte & 0b01111111)
+
+        if (file_entry.type[0]>0x80):
+            rw = True
+        if (file_entry.type[1]>0x80):
+            sys = True
+        if (file_entry.file[0]<0x80):
+            blocks = ""
+            for x in file_entry.allocation:
+                blocks = blocks + str(x) + " "
+            print(file_entry.file.decode("ASCII")+"."+file_type.decode("ASCII"), end='')
+            print(" "+str(rw)+" "+str(sys)+" "+str(file_entry.extent[0])+"-"+str(file_entry.extent[2])+" "+str(file_entry.extent[3])+" "+blocks)
 
 
 parser=argparse.ArgumentParser(description="Load an IMD file")
 parser.add_argument("filename", metavar="F", nargs=1, \
     help="File Name")
+parser.add_argument("-d", action='store_true', help="display directory")
 args=parser.parse_args()
 
 # Check the file exists
@@ -69,6 +91,7 @@ disk.first_data_track=3
 while True:
     track_header = file.read(5)
     if not track_header:
+        # File is finished...
         break
     
     track_mode = track_header[0]
@@ -107,11 +130,8 @@ while True:
     else:
         current_track.skew=5
 
-    if track_cyl_map :
-        print ("Cylinder Map: ",track_cyl_map)
     
     if track_head_map :
-        print ("Head Map: ",track_head_map)
         disk.independent_sides = True
         
 
@@ -119,36 +139,33 @@ while True:
     for i in range(0,track_sectors):
         sector_status_byte = file.read(1)[0]
         sector_index_number = track_sector_map[i]-start_sector
-        print("Sector index:",sector_index_number)
+        # Uncompressed sectors...
         if (sector_status_byte ==  1) or  (sector_status_byte ==  3) or (sector_status_byte ==  5) or \
             (sector_status_byte ==  7):
-            #copy directly
             sector_data = file.read(sector_sizes[track_sector_size])
             current_sector = CpmSector(track_sector_map[i], sector_data)
             current_track.sectors[sector_index_number] = current_sector
+        # Compressed sectors...
         elif (sector_status_byte ==  2) or  (sector_status_byte ==  4) or (sector_status_byte ==  6) or \
             (sector_status_byte ==  8):
             sector_data = file.read(1)
             padded_data = bytearray()
             for x in range (0,sector_sizes[track_sector_size]):
+                # fill up the sector with the given byte...
                 padded_data.append(sector_data[0])
             current_sector = CpmSector(track_sector_map[i], padded_data)
             current_track.sectors[sector_index_number] = current_sector
 
         else:
             sector_data = None
-        print("Sector ",track_sector_map[i]," Status: ",sector_status_byte)
-        print("Data:", sector_data)
+
     current_side.tracks.append(current_track)
 
 print("Disk read into CpmDisk object.")
 print("Tracks: ",len(disk.sides[0].tracks))
 
-disk.process_directory()
-
-
-
-
+if args.d:
+    display_directory(disk)
 
 
 
